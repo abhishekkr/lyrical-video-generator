@@ -2,7 +2,10 @@
 
 import os
 import cv2
+import re
+import sys
 from PIL import Image
+
 
 def frame_dir():
     try:
@@ -11,11 +14,24 @@ def frame_dir():
         return os.getcwd()
 
 
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    '''
+    source: https://stackoverflow.com/a/5967539
+    '''
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+
+
 def listframes(path_with_frames):
-    return [img for img in os.listdir(path_with_frames)
-                if img.endswith(".jpg") or
-                    img.endswith(".jpeg") or
-                    img.endswith("png")]
+    _listframes = [img for img in os.listdir(path_with_frames)
+                    if img.endswith(".jpg") or
+                       img.endswith(".jpeg") or
+                       img.endswith(".png")]
+    _listframes.sort(key=natural_keys)
+    return _listframes
 
 
 def get_video_size(path_with_frames, list_of_frames):
@@ -62,6 +78,9 @@ def generate_video(path_with_frames, list_of_frames, video_file, size):
 video_name = '/tmp/mygeneratedvideo.avi'
 path_with_frames = frame_dir()
 all_frames = listframes(path_with_frames)
+if all_frames == None or len(all_frames) == 0:
+    print("found no frames at %s" % (path_with_frames))
+    sys.exit(1)
 video_size = get_video_size(path_with_frames, all_frames)
 resize_frames(path_with_frames, all_frames, video_size)
 generate_video(path_with_frames, all_frames, video_name, video_size)

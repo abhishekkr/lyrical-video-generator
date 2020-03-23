@@ -11,3 +11,7 @@ temp/*
 *.cfg
 *.lock
 *.sock
+lvg-data/*.txt
+lvg-data/*.txt.lvg
+lvg-data/frames/*.png
+lvg-data/transcription/*.*
