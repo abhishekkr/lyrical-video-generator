@@ -83,10 +83,12 @@ def draw_next_word(canvas, last_line, shabda, x_coordinates, font, color):
     del draw
 
 
-def save_image_times(canvas, frame_index, times):
-    for idx in range(times):
-        lvg_frame_filepath = os.path.join(lvg_frames_dir, "lvg-%d-%d.png" % (frame_index, idx))
+def save_image_times(canvas, frame_index, times, subindex=0):
+    for idx in range(0,times):
+        lvg_frame_filepath = os.path.join(lvg_frames_dir, "lvg-%d-%d.png" % (frame_index, subindex))
+        subindex += 1
         canvas.save(lvg_frame_filepath, "PNG")
+    return subindex
 
 
 def create_frame_shabda(canvas, frame_index, y_text, for_millisec, line, shabda, font):
@@ -96,27 +98,28 @@ def create_frame_shabda(canvas, frame_index, y_text, for_millisec, line, shabda,
         draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_NEXT)
 
     frames_count = math.ceil(FRAMES_PER_SECOND * (int(for_millisec)/1000))
+    subindex = 0
     if len(shabda) < 1:
-        save_image_times(canvas, frame_index, frames_count)
+        subindex = save_image_times(canvas, frame_index, frames_count, subindex)
     if len(shabda) < 2:
-        save_image_times(canvas, frame_index, frames_count/2)
+        subindex = save_image_times(canvas, frame_index, frames_count/2, subindex)
         draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
-        save_image_times(canvas, frame_index, frames_count/2)
+        subindex = save_image_times(canvas, frame_index, frames_count/2, subindex)
     elif len(shabda) == 2:
-        save_image_times(canvas, frame_index, int(frames_count/3))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/3), subindex)
         draw_next_word(canvas, line, shabda[0], x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
-        save_image_times(canvas, frame_index, int(frames_count/3))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/3), subindex)
         draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
-        save_image_times(canvas, frame_index, int(frames_count/3))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/3), subindex)
     else:
         token_size = math.ceil(len(shabda) / 3)
-        save_image_times(canvas, frame_index, int(frames_count/4))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/4), subindex)
         draw_next_word(canvas, line, shabda[:(token_size)], x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
-        save_image_times(canvas, frame_index, int(frames_count/4))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/4), subindex)
         draw_next_word(canvas, line, shabda[:(token_size*2)], x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
-        save_image_times(canvas, frame_index, int(frames_count/4))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/4), subindex)
         draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
-        save_image_times(canvas, frame_index, int(frames_count/4))
+        subindex = save_image_times(canvas, frame_index, int(frames_count/4), subindex)
 
 
 def create_frame(frame_index, for_millisec, lyric_list, shabda, font):
