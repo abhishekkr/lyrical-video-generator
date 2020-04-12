@@ -62,9 +62,8 @@ def resize_frames(path_with_frames, list_of_frames, size):
 
 def generate_video(path_with_frames, list_of_frames, video_file, size):
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    fps = 1
 
-    video = cv2.VideoWriter(video_file, fourcc, fps, size, True)
+    video = cv2.VideoWriter(video_file, fourcc, FRAMES_PER_SECOND, size, True)
 
     for frame in list_of_frames:
         print("adding frame:", frame)
@@ -75,6 +74,7 @@ def generate_video(path_with_frames, list_of_frames, video_file, size):
     video.release()  # releasing the video generated
 
 
+FRAMES_PER_SECOND = 24  ## common across scripts
 video_name = '/tmp/mygeneratedvideo.avi'
 path_with_frames = frame_dir()
 all_frames = listframes(path_with_frames)

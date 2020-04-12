@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import csv
+import math
 import os
 import re
 from PIL import Image, ImageDraw, ImageFont
@@ -23,67 +24,136 @@ fontspath = {
 }
 
 
-def allowed_line_count(max_height, font, margin_top=10, line_gap=1, buffer=0):
+def last_line_y(current_y, font_height):
+    return current_y - (font_height + DEFAULT_LINE_GAP)
+
+
+def next_line_y(current_y, font_height):
+    return current_y + font_height + DEFAULT_LINE_GAP
+
+
+def line_x(line_width, shabda_width):
+    x_text = (FRAME_WIDTH - line_width) / 2
+    if (line_width + shabda_width) < FRAME_WIDTH: x_text -= (shabda_width/2)
+    return x_text
+
+
+def next_word_coordinates(line, shabda, y_text, font):
+    line_width, line_height = font.getsize(line)
+    shabda_width, _ = font.getsize(' ' + shabda)
+    x_text = line_x(line_width, shabda_width)
+    x_shabda = (FRAME_WIDTH - shabda_width) / 2
+    y_shabda = y_text
+    if (x_text + line_width + shabda_width + MARGIN_LEFT_RIGHT) < FRAME_WIDTH:
+        x_shabda = x_text + line_width
+        y_shabda = last_line_y(y_text, line_height)
+    return (x_shabda, y_shabda)
+
+
+def allowed_line_count(max_height, font, margin_top=10, buffer=0):
     _, font_height = font.getsize('test !;qgp text')
-    return int(max_height / (font_height + line_gap + buffer))
+    return int(max_height / (next_line_y(0, font_height) + buffer))
+
+
+def draw_read_line(canvas, lyric_line, y_text, font, shabda_width=0):
+    draw = ImageDraw.Draw(canvas)
+    line_width, line_height = font.getsize(lyric_line)
+    x_text = line_x(line_width, shabda_width)
+    draw.text(
+        (x_text, y_text),
+        lyric_line,
+        fill=FRAME_TEXTCOLOR,
+        font=font)
+    y_text = next_line_y(y_text, line_height)
+    del draw
+    return y_text
+
+
+def draw_next_word(canvas, last_line, shabda, x_coordinates, font, color):
+    print("last line: %s" % (last_line))
+    print("shabda: %s" % (shabda))
+    print("x: %s" % str(x_coordinates))
+    print("----------------------------")
+    draw = ImageDraw.Draw(canvas)
+    draw.text(
+        x_coordinates,
+        ' ' + shabda,
+        fill=color,
+        font=font)
+    del draw
+
+
+def save_image_times(canvas, frame_index, times):
+    for idx in range(times):
+        lvg_frame_filepath = os.path.join(lvg_frames_dir, "lvg-%d-%d.png" % (frame_index, idx))
+        canvas.save(lvg_frame_filepath, "PNG")
+
+
+def create_frame_shabda(canvas, frame_index, y_text, for_millisec, line, shabda, font):
+    x_coordinates = next_word_coordinates(line, shabda, y_text, font)
+
+    if len(line) > 0:
+        draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_NEXT)
+
+    frames_count = math.ceil(FRAMES_PER_SECOND * (int(for_millisec)/1000))
+    if len(shabda) < 1:
+        save_image_times(canvas, frame_index, frames_count)
+    if len(shabda) < 2:
+        save_image_times(canvas, frame_index, frames_count/2)
+        draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
+        save_image_times(canvas, frame_index, frames_count/2)
+    elif len(shabda) == 2:
+        save_image_times(canvas, frame_index, int(frames_count/3))
+        draw_next_word(canvas, line, shabda[0], x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
+        save_image_times(canvas, frame_index, int(frames_count/3))
+        draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
+        save_image_times(canvas, frame_index, int(frames_count/3))
+    else:
+        token_size = math.ceil(len(shabda) / 3)
+        save_image_times(canvas, frame_index, int(frames_count/4))
+        draw_next_word(canvas, line, shabda[:(token_size)], x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
+        save_image_times(canvas, frame_index, int(frames_count/4))
+        draw_next_word(canvas, line, shabda[:(token_size*2)], x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
+        save_image_times(canvas, frame_index, int(frames_count/4))
+        draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_TEXTCOLOR_CURRENT)
+        save_image_times(canvas, frame_index, int(frames_count/4))
 
 
 def create_frame(frame_index, for_millisec, lyric_list, shabda, font):
-    lvg_frame_filepath = os.path.join(lvg_frames_dir, "lvg-%d.png" % (frame_index))
     canvas = Image.new('RGB', (FRAME_WIDTH, FRAME_HEIGHT), FRAME_BGCOLOR)
-    draw = ImageDraw.Draw(canvas)
-    line_gap = 5
     y_text = 10
-    lines_to_use = allowed_line_count(FRAME_HEIGHT, font, y_text, line_gap)
+    lines_to_use = allowed_line_count(FRAME_HEIGHT, font, y_text)
     line_to_add_from = len(lyric_list) - lines_to_use
 
-    shabda_width, shabda_height = font.getsize(" " + shabda + " ")
+    shabda_width, _ = font.getsize(" " + shabda)
 
-    for line in lyric_list[line_to_add_from:]:
-        width, height = font.getsize(line)
-        x_text = (FRAME_WIDTH - width) / 2
-        if (width + shabda_width) < FRAME_WIDTH: x_text -= (shabda_width/2)
-        draw.text(
-            (x_text, y_text),
-            line,
-            fill=FRAME_TEXTCOLOR,
-            font=font)
-        y_text += height + line_gap
+    lines_already_read = lyric_list[line_to_add_from:-1]
+    line_currently_read = lyric_list[-1]
 
-    x_text = 0
-    if len(lyric_list) > 0:
-        width, height = font.getsize(lyric_list[-1])
-        x_shabda = (FRAME_WIDTH - shabda_width) / 2
-        y_shabda = y_text
-        if (width + shabda_width) < FRAME_WIDTH:
-            x_shabda = ((FRAME_WIDTH - width) / 2) - (shabda_width/2) + width
-            y_shabda -= (height + line_gap)
-        draw.text(
-            (x_shabda, y_shabda),
-            " " + shabda,
-            fill=FRAME_TEXTCOLOR_CURRENT,
-            font=font)
+    for line in lines_already_read:
+        y_text = draw_read_line(canvas, line, y_text, font)
+        print("~", line)
 
-    canvas.save(lvg_frame_filepath, "PNG")
-    del draw
+    y_text = draw_read_line(canvas, line_currently_read, y_text, font, shabda_width)
+
+    create_frame_shabda(canvas, frame_index, y_text, for_millisec, line_currently_read, shabda, font)
+    # cleaning up to avoid corrupted memory errors
     del canvas
-
 
 
 def text_wrap(text, font, max_width):
     """
     source: https://haptik.ai/tech/putting-text-on-images-using-python-part2/
     """
-    margin_left_right = 10
     lines = []
-    if (font.getsize(text)[0] + margin_left_right) <= max_width:
+    if (font.getsize(text)[0] + (2*MARGIN_LEFT_RIGHT)) <= max_width:
         lines.append(text)
     else:
         words = text.split(' ')
         i = 0
         while i < len(words):
             line = ''
-            while i < len(words) and (font.getsize(line + words[i])[0] + margin_left_right) <= max_width:
+            while i < len(words) and (font.getsize(line + words[i])[0] + (2*MARGIN_LEFT_RIGHT)) <= max_width:
                 line = line + words[i] + " "
                 i += 1
             if not line:
@@ -111,6 +181,8 @@ def csv_to_frames():
 
 FRAME_WIDTH = 800
 FRAME_HEIGHT = 600
+MARGIN_LEFT_RIGHT = 15
+DEFAULT_LINE_GAP = 10
 
 FRAMES_PER_SECOND = 24  ## common across scripts
 FRAME_BGCOLOR = (236, 128, 16) # dull orange
