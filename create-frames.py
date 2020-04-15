@@ -5,6 +5,7 @@ import math
 import os
 import re
 from PIL import Image, ImageDraw, ImageFont
+import functools
 
 
 fontspath = {
@@ -24,32 +25,61 @@ fontspath = {
 }
 
 
+@functools.lru_cache(maxsize=128)
 def last_line_y(current_y, font_height):
     return current_y - (font_height + DEFAULT_LINE_GAP)
 
 
+@functools.lru_cache(maxsize=128)
 def next_line_y(current_y, font_height):
     return current_y + font_height + DEFAULT_LINE_GAP
 
 
-def line_x(line_width, shabda_width):
+@functools.lru_cache(maxsize=128)
+def line_x_middle(line_width, shabda_width):
     x_text = (FRAME_WIDTH - line_width) / 2
     if (line_width + shabda_width) < FRAME_WIDTH: x_text -= (shabda_width/2)
     return x_text
 
 
+@functools.lru_cache(maxsize=128)
+def line_shabda_x_middle(line_width, shabda_width):
+    x_text = line_x(line_width, shabda_width)
+    x_shabda = (FRAME_WIDTH - shabda_width) / 2
+    if (x_text + line_width + shabda_width + MARGIN_LEFT_RIGHT) < FRAME_WIDTH:
+        x_shabda = x_text + line_width
+    return x_shabda
+
+
+@functools.lru_cache(maxsize=128)
+def line_x(line_width, shabda_width):
+    return {
+        'default': line_x_middle,
+        'middle': line_x_middle,
+    }[LINE_INDENTATION_STYLE](line_width, shabda_width)
+
+
+@functools.lru_cache(maxsize=128)
+def line_shabda_x(line_width, shabda_width):
+    return {
+        'default': line_shabda_x_middle,
+        'middle': line_shabda_x_middle,
+    }[LINE_INDENTATION_STYLE](line_width, shabda_width)
+
+
+@functools.lru_cache(maxsize=128)
 def next_word_coordinates(line, shabda, y_text, font):
     line_width, line_height = font.getsize(line)
     shabda_width, _ = font.getsize(' ' + shabda)
     x_text = line_x(line_width, shabda_width)
-    x_shabda = (FRAME_WIDTH - shabda_width) / 2
+    x_shabda = line_shabda_x(line_width, shabda_width)
     y_shabda = y_text
     if (x_text + line_width + shabda_width + MARGIN_LEFT_RIGHT) < FRAME_WIDTH:
-        x_shabda = x_text + line_width
         y_shabda = last_line_y(y_text, line_height)
     return (x_shabda, y_shabda)
 
 
+@functools.lru_cache(maxsize=128)
 def allowed_line_count(max_height, font, margin_top=10, buffer=0):
     _, font_height = font.getsize('test !;qgp text')
     return int(max_height / (next_line_y(0, font_height) + buffer))
@@ -192,6 +222,8 @@ FRAME_BGCOLOR = (236, 128, 16) # dull orange
 FRAME_TEXTCOLOR = (73, 73, 96) # muddy purple
 FRAME_TEXTCOLOR_CURRENT = (64, 64, 255) # blue
 FRAME_TEXTCOLOR_NEXT = (192, 192, 255) # light purple
+
+LINE_INDENTATION_STYLE = 'default'
 
 default_font_path = fontspath['freeserf_bold']
 lvg_data_dir = 'lvg-data'
