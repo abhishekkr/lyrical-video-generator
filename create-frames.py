@@ -44,8 +44,22 @@ def line_x_middle(line_width, shabda_width):
 
 @functools.lru_cache(maxsize=128)
 def line_shabda_x_middle(line_width, shabda_width):
-    x_text = line_x(line_width, shabda_width)
+    x_text = line_x_middle(line_width, shabda_width)
     x_shabda = (FRAME_WIDTH - shabda_width) / 2
+    if (x_text + line_width + shabda_width + MARGIN_LEFT_RIGHT) < FRAME_WIDTH:
+        x_shabda = x_text + line_width
+    return x_shabda
+
+
+@functools.lru_cache(maxsize=128)
+def line_x_left(line_width, shabda_width):
+    return MARGIN_LEFT_RIGHT
+
+
+@functools.lru_cache(maxsize=128)
+def line_shabda_x_left(line_width, shabda_width):
+    x_text = MARGIN_LEFT_RIGHT
+    x_shabda = MARGIN_LEFT_RIGHT
     if (x_text + line_width + shabda_width + MARGIN_LEFT_RIGHT) < FRAME_WIDTH:
         x_shabda = x_text + line_width
     return x_shabda
@@ -56,6 +70,7 @@ def line_x(line_width, shabda_width):
     return {
         'default': line_x_middle,
         'middle': line_x_middle,
+        'left': line_x_left,
     }[LINE_INDENTATION_STYLE](line_width, shabda_width)
 
 
@@ -64,6 +79,7 @@ def line_shabda_x(line_width, shabda_width):
     return {
         'default': line_shabda_x_middle,
         'middle': line_shabda_x_middle,
+        'left': line_shabda_x_left,
     }[LINE_INDENTATION_STYLE](line_width, shabda_width)
 
 
