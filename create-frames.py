@@ -24,6 +24,12 @@ fontspath = {
     'noto_sans_black': '/usr/share/fonts/google-noto/NotoSans-Black.ttf',
 }
 
+@functools.lru_cache(maxsize=128)
+def line_need_break(line):
+    if bool(re.match(r".*[\.,!\:;\?]\s*$", line)):
+        return True
+    return False
+
 
 @functools.lru_cache(maxsize=128)
 def last_line_y(current_y, font_height):
@@ -87,9 +93,12 @@ def line_shabda_x(line_width, shabda_width):
 def next_word_coordinates(line, shabda, y_text, font):
     line_width, line_height = font.getsize(line)
     shabda_width, _ = font.getsize(' ' + shabda)
+    y_shabda = y_text
+    if line_need_break(line):
+        x_shabda = line_x(0, shabda_width)
+        return (x_shabda, y_shabda)
     x_text = line_x(line_width, shabda_width)
     x_shabda = line_shabda_x(line_width, shabda_width)
-    y_shabda = y_text
     if (x_text + line_width + shabda_width + MARGIN_LEFT_RIGHT) < FRAME_WIDTH:
         y_shabda = last_line_y(y_text, line_height)
     return (x_shabda, y_shabda)
@@ -98,12 +107,17 @@ def next_word_coordinates(line, shabda, y_text, font):
 @functools.lru_cache(maxsize=128)
 def allowed_line_count(max_height, font, margin_top=10, buffer=0):
     _, font_height = font.getsize('test !;qgp text')
-    return int(max_height / (next_line_y(0, font_height) + buffer))
+    possible_count = int(max_height / (next_line_y(0, font_height) + buffer))
+    if possible_count < MAX_LINES_PER_FRAME:
+        return possible_count
+    return MAX_LINES_PER_FRAME
 
 
 def draw_read_line(canvas, lyric_line, y_text, font, shabda_width=0):
     draw = ImageDraw.Draw(canvas)
     line_width, line_height = font.getsize(lyric_line)
+    if line_need_break(lyric_line):
+        shabda_width = 0
     x_text = line_x(line_width, shabda_width)
     draw.text(
         (x_text, y_text),
@@ -130,7 +144,7 @@ def draw_next_word(canvas, last_line, shabda, x_coordinates, font, color):
 
 
 def save_image_times(canvas, frame_index, times, subindex=0):
-    for idx in range(0,times):
+    for idx in range(0,int(times)):
         lvg_frame_filepath = os.path.join(lvg_frames_dir, "lvg-%d-%d.png" % (frame_index, subindex))
         subindex += 1
         canvas.save(lvg_frame_filepath, "PNG")
@@ -170,7 +184,7 @@ def create_frame_shabda(canvas, frame_index, y_text, for_millisec, line, shabda,
 
 def create_frame(frame_index, for_millisec, lyric_list, shabda, font):
     canvas = Image.new('RGB', (FRAME_WIDTH, FRAME_HEIGHT), FRAME_BGCOLOR)
-    y_text = 10
+    y_text = MARGIN_TOP
     lines_to_use = allowed_line_count(FRAME_HEIGHT, font, y_text)
     line_to_add_from = len(lyric_list) - lines_to_use
 
@@ -194,17 +208,24 @@ def text_wrap(text, font, max_width):
     """
     source: https://haptik.ai/tech/putting-text-on-images-using-python-part2/
     """
+    side_margin = MARGIN_LEFT_RIGHT
     lines = []
-    if (font.getsize(text)[0] + (2*MARGIN_LEFT_RIGHT)) <= max_width:
+    if (font.getsize(text)[0] + (2*side_margin)) <= max_width:
         lines.append(text)
     else:
         words = text.split(' ')
         i = 0
         while i < len(words):
             line = ''
-            while i < len(words) and (font.getsize(line + words[i])[0] + (2*MARGIN_LEFT_RIGHT)) <= max_width:
+            while True:
+                if i >= len(words):
+                    break
+                if (font.getsize(line + words[i])[0] + (2*side_margin)) > max_width:
+                    break
                 line = line + words[i] + " "
                 i += 1
+                if line_need_break(line):
+                    break
             if not line:
                 line = words[i]
                 i += 1
@@ -230,8 +251,10 @@ def csv_to_frames():
 
 FRAME_WIDTH = 800
 FRAME_HEIGHT = 600
+MARGIN_TOP = 100 #10
 MARGIN_LEFT_RIGHT = 15
 DEFAULT_LINE_GAP = 10
+MAX_LINES_PER_FRAME = 5
 
 FRAMES_PER_SECOND = 24  ## common across scripts
 FRAME_BGCOLOR = (236, 128, 16) # dull orange
@@ -239,7 +262,8 @@ FRAME_TEXTCOLOR = (73, 73, 96) # muddy purple
 FRAME_TEXTCOLOR_CURRENT = (64, 64, 255) # blue
 FRAME_TEXTCOLOR_NEXT = (192, 192, 255) # light purple
 
-LINE_INDENTATION_STYLE = 'default'
+#LINE_INDENTATION_STYLE = 'default'
+LINE_INDENTATION_STYLE = 'left'
 
 default_font_path = fontspath['freeserf_bold']
 lvg_data_dir = 'lvg-data'
