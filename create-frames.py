@@ -249,10 +249,10 @@ def csv_to_frames():
         print('Processed %d lines.' % (line_count))
 
 
-FRAME_WIDTH = 800
-FRAME_HEIGHT = 600
+FRAME_WIDTH = 1024
+FRAME_HEIGHT = 768
 MARGIN_TOP = 100 #10
-MARGIN_LEFT_RIGHT = 15
+MARGIN_LEFT_RIGHT = 25
 DEFAULT_LINE_GAP = 10
 MAX_LINES_PER_FRAME = 5
 
