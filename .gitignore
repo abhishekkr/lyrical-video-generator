@@ -15,3 +15,4 @@ lvg-data/*.txt
 lvg-data/*.txt.lvg
 lvg-data/frames/*.png
 lvg-data/transcription/*.*
+lvg-data/*.*

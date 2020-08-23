@@ -65,22 +65,32 @@ def generate_video(path_with_frames, list_of_frames, video_file, size):
 
     video = cv2.VideoWriter(video_file, fourcc, FRAMES_PER_SECOND, size, True)
 
+    last_framepath = None
     for frame in list_of_frames:
         print("adding frame:", frame)
         framepath = os.path.join(path_with_frames, frame)
         video.write(cv2.imread(framepath))
+        last_framepath = framepath
+    for _ in range(REPEAT_LAST_FRAME_FOR_COUNT):
+        video.write(cv2.imread(last_framepath))
 
     cv2.destroyAllWindows() # Deallocating memories taken for window creation
     video.release()  # releasing the video generated
 
+def main():
+    path_with_frames = frame_dir()
+    all_frames = listframes(path_with_frames)
+    if all_frames == None or len(all_frames) == 0:
+        print("found no frames at %s" % (path_with_frames))
+        sys.exit(1)
+    video_size = get_video_size(path_with_frames, all_frames)
+    resize_frames(path_with_frames, all_frames, video_size)
+    generate_video(path_with_frames, all_frames, VIDEO_NAME, video_size)
+
 
 FRAMES_PER_SECOND = 24  ## common across scripts
-video_name = '/tmp/mygeneratedvideo.avi'
-path_with_frames = frame_dir()
-all_frames = listframes(path_with_frames)
-if all_frames == None or len(all_frames) == 0:
-    print("found no frames at %s" % (path_with_frames))
-    sys.exit(1)
-video_size = get_video_size(path_with_frames, all_frames)
-resize_frames(path_with_frames, all_frames, video_size)
-generate_video(path_with_frames, all_frames, video_name, video_size)
+VIDEO_NAME = '/tmp/mygeneratedvideo.avi'
+REPEAT_LAST_FRAME_FOR_COUNT = 48
+
+if __name__ == "__main__":
+    main()

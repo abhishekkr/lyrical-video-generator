@@ -27,10 +27,11 @@ def transcribe_wav(wav_file, lyrics_file):
         f.write(lyrics)
 
 
-lvg_data_dir = 'lvg-data'
-lvg_data_transcript_dir = os.path.join(lvg_data_dir, 'transcription')
-mp3_file = os.path.join(lvg_data_transcript_dir, "transcript.mp3")
-wav_file = os.path.join(lvg_data_transcript_dir, "transcript.wav")
-lyrics_file = 'lvg-data/transcript.txt'
-os.makedirs(lvg_data_transcript_dir, exist_ok=True)
-transcribe_sound(mp3_file, lyrics_file)
+if __name__ == "__main__":
+    lvg_data_dir = 'lvg-data'
+    lvg_data_transcript_dir = os.path.join(lvg_data_dir, 'transcription')
+    mp3_file = os.path.join(lvg_data_transcript_dir, "transcript.mp3")
+    wav_file = os.path.join(lvg_data_transcript_dir, "transcript.wav")
+    lyrics_file = 'lvg-data/transcript.txt'
+    os.makedirs(lvg_data_transcript_dir, exist_ok=True)
+    transcribe_sound(mp3_file, lyrics_file)
