@@ -1,5 +1,7 @@
 ## lyrical-video-generator
 
+> **STATUATORY WARNING**: this project is currently just a set of scripts written from an experimental purpose
+
 > to generate a lyrical video from provided audio file or text file
 
 ### Usage
