@@ -3,6 +3,7 @@
 import csv
 import math
 import os
+import random
 import re
 from PIL import Image, ImageDraw, ImageFont
 import functools
@@ -16,13 +17,13 @@ def line_need_break(line):
 
 
 @functools.lru_cache(maxsize=128)
-def last_line_y(current_y, font_height):
-    return current_y - (font_height + FRAME_SPECS['default_line_gap'])
+def last_line_y(current_y):
+    return current_y - (FRAME_SPECS['font_height'] + FRAME_SPECS['default_line_gap'])
 
 
 @functools.lru_cache(maxsize=128)
-def next_line_y(current_y, font_height):
-    return current_y + font_height + FRAME_SPECS['default_line_gap']
+def next_line_y(current_y):
+    return current_y + FRAME_SPECS['font_height'] + FRAME_SPECS['default_line_gap']
 
 
 @functools.lru_cache(maxsize=128)
@@ -76,23 +77,24 @@ def line_shabda_x(line_width, shabda_width):
 
 @functools.lru_cache(maxsize=128)
 def next_word_coordinates(line, shabda, y_text, font):
-    line_width, line_height = font.getsize(line)
+    line_width, _ = font.getsize(line)
     shabda_width, _ = font.getsize(' ' + shabda)
     y_shabda = y_text
     if line_need_break(line):
         x_shabda = line_x(0, shabda_width)
+        y_shabda = last_line_y(y_text)
         return (x_shabda, y_shabda)
     x_text = line_x(line_width, shabda_width)
     x_shabda = line_shabda_x(line_width, shabda_width)
-    if (x_text + line_width + shabda_width + FRAME_SPECS['margin_left_right']) < FRAME_SPECS['width']:
-        y_shabda = last_line_y(y_text, line_height)
+    #if (x_text + line_width + shabda_width + FRAME_SPECS['margin_left_right']) < FRAME_SPECS['width']:
+    #    y_shabda = last_line_y(y_text)
+    y_shabda = last_line_y(y_text)
     return (x_shabda, y_shabda)
 
 
 @functools.lru_cache(maxsize=128)
 def allowed_line_count(max_height, font, margin_top=10, buffer=0):
-    _, font_height = font.getsize('test !;qgp text')
-    possible_count = int(max_height / (next_line_y(margin_top, font_height) + buffer))
+    possible_count = int(max_height / (next_line_y(margin_top) + buffer))
     if possible_count < FRAME_SPECS['max_lines_per_frame']:
         return possible_count
     return FRAME_SPECS['max_lines_per_frame']
@@ -100,7 +102,7 @@ def allowed_line_count(max_height, font, margin_top=10, buffer=0):
 
 def draw_read_line(canvas, lyric_line, y_text, font, shabda_width=0):
     draw = ImageDraw.Draw(canvas)
-    line_width, line_height = font.getsize(lyric_line)
+    line_width, _ = font.getsize(lyric_line)
     if line_need_break(lyric_line):
         shabda_width = 0
     x_text = line_x(line_width, shabda_width)
@@ -109,7 +111,7 @@ def draw_read_line(canvas, lyric_line, y_text, font, shabda_width=0):
         lyric_line,
         fill=FRAME_SPECS['textcolor'],
         font=font)
-    y_text = next_line_y(y_text, line_height)
+    y_text = next_line_y(y_text)
     del draw
     return y_text
 
@@ -149,6 +151,7 @@ def create_frame_shabda(canvas, frame_index, y_text, for_millisec, line, shabda,
         subindex = save_image_times(canvas, frame_index, frames_count/2, subindex)
         draw_next_word(canvas, line, shabda, x_coordinates, font, FRAME_SPECS['textcolor_current'])
         subindex = save_image_times(canvas, frame_index, frames_count/2, subindex)
+
     elif len(shabda) == 2:
         subindex = save_image_times(canvas, frame_index, int(frames_count/3), subindex)
         draw_next_word(canvas, line, shabda[0], x_coordinates, font, FRAME_SPECS['textcolor_current'])
@@ -166,8 +169,28 @@ def create_frame_shabda(canvas, frame_index, y_text, for_millisec, line, shabda,
         subindex = save_image_times(canvas, frame_index, int(frames_count/4), subindex)
 
 
+def base_image_path(bgimage_dir):
+    try:
+        _bgimages = [img for img in os.listdir(bgimage_dir)
+                        if img.endswith(".jpg") or
+                        img.endswith(".jpeg") or
+                        img.endswith(".png")]
+        bgimage_name = _bgimages[random.randint(0, len(_bgimages)-1)]
+        return os.path.join(bgimage_dir, bgimage_name)
+    except:
+        return None
+
+
+def base_image(bgimage_path):
+    try:
+        bgimage = Image.open(bgimage_path)
+        return bgimage.copy().resize((FRAME_SPECS['width'], FRAME_SPECS['height']))
+    except:
+        return Image.new('RGB', (FRAME_SPECS['width'], FRAME_SPECS['height']), FRAME_SPECS['bgcolor'])
+
+
 def create_frame_image(frame_index, for_millisec, lyric_list, shabda, font):
-    canvas = Image.new('RGB', (FRAME_SPECS['width'], FRAME_SPECS['height']), FRAME_SPECS['bgcolor'])
+    canvas = base_image(BASE_IMAGE_PATH)
 
     y_text = FRAME_SPECS['margin_top']
     lines_to_use = allowed_line_count(FRAME_SPECS['height'], font, y_text)
@@ -213,6 +236,7 @@ def count_allowed_characters_in_a_line(font):
 def csv_to_frames(frame_data_file):
     default_font = ImageFont.truetype(FRAME_SPECS['font_path'], 73, encoding="unic")
     allowed_characters_in_a_line = count_allowed_characters_in_a_line(default_font)
+    _, FRAME_SPECS['font_height'] = default_font.getsize("Trying to keep ^~*,| better height")
 
     os.makedirs(LVG_FRAMES_DIR, exist_ok=True)
     with open(frame_data_file) as csv_file:
@@ -259,11 +283,12 @@ FRAME_SPECS = {
     'width': 1024,
     'height': 768,
     'margin_top': 100, #10
-    'margin_left_right': 25,
+    'margin_left_right': 50,
     'default_line_gap': 10,
     'max_lines_per_frame': 5,
 
     'font_path': FONTS_PATH['freeserf_bold'],
+    'font_height': 50,
 
     'bgcolor': (236, 128, 16), # dull orange
     'textcolor': (73, 73, 96), # muddy purple
@@ -279,6 +304,7 @@ LVG_DATA_DIR = 'lvg-data'
 LVG_FRAMES_DIR = os.path.join(LVG_DATA_DIR, 'frames')
 LVG_FRAME_DATA_FILE = os.path.join(LVG_DATA_DIR, 'transcript.txt.lvg')
 
+BASE_IMAGE_PATH = base_image_path(os.path.join(LVG_DATA_DIR, 'bgimages'),)
 
 if __name__ == '__main__':
     csv_to_frames(LVG_FRAME_DATA_FILE)
